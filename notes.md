@@ -6,21 +6,21 @@ As part of `Deliverable ⓵ Development deployment: JWT Pizza`, start up the app
 
 | User activity                                       | Frontend component | Backend endpoints | Database SQL |
 | --------------------------------------------------- | ------------------ | ----------------- | ------------ |
-| View home page                                      |                    |                   |              |
-| Register new user<br/>(t@jwt.com, pw: test)         |                    |                   |              |
-| Login new user<br/>(t@jwt.com, pw: test)            |                    |                   |              |
-| Order pizza                                         |                    |                   |              |
-| Verify pizza                                        |                    |                   |              |
-| View profile page                                   |                    |                   |              |
-| View franchise<br/>(as diner)                       |                    |                   |              |
-| Logout                                              |                    |                   |              |
-| View About page                                     |                    |                   |              |
-| View History page                                   |                    |                   |              |
-| Login as franchisee<br/>(f@jwt.com, pw: franchisee) |                    |                   |              |
-| View franchise<br/>(as franchisee)                  |                    |                   |              |
-| Create a store                                      |                    |                   |              |
-| Close a store                                       |                    |                   |              |
-| Login as admin<br/>(a@jwt.com, pw: admin)           |                    |                   |              |
-| View Admin page                                     |                    |                   |              |
-| Create a franchise for t@jwt.com                    |                    |                   |              |
-| Close the franchise for t@jwt.com                   |                    |                   |              |
+| View home page                                      | `src/views/register.tsx` |                   |              |
+| Register new user<br/>(t@jwt.com, pw: test)         |`Register` (`src/views/register.tsx`) → `pizzaService.register()`|  `POST /api/auth` (`authRouter.js`) | `INSERT INTO user (name, email, password) VALUES (?, ?, ?)`; `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`; `INSERT INTO auth (token, userId) VALUES (?, ?) ON DUPLICATE KEY UPDATE token=token` |
+| Login new user<br/>(t@jwt.com, pw: test)            | `Login` (`src/views/login.tsx`) → `pizzaService.login()` |  `PUT /api/auth (authRouter.js)`  | `SELECT * FROM user WHERE email=?`; `SELECT * FROM userRole WHERE userId=?`; `INSERT INTO auth (token, userId) VALUES (?, ?) ON DUPLICATE KEY UPDATE token=token`|
+| Order pizza                                         | `Menu` + `Payment` (`src/views/menu.tsx`, `payment.tsx`) → `pizzaService.getMenu()`, `getFranchises()`, `order()`| `GET /api/order/menu` (`orderRouter.js`); `GET /api/franchise?page=&limit=&name=` (`franchiseRouter.js`); `POST /api/order` (`orderRouter.js`)  |  `SELECT * FROM menu`; `SELECT id, name FROM franchise WHERE name LIKE ? LIMIT ? OFFSET ?` + `SELECT id, name FROM store WHERE franchiseId=?`; `INSERT INTO dinerOrder (dinerId, franchiseId, storeId, date) VALUES (?, ?, ?, now())`; `INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`  |
+| Verify pizza                                        | `Delivery` (`src/views/delivery.tsx`) → `pizzaService.verifyOrder()`  |   `None verfies on pizza factory`                |       `-`       |
+| View profile page                                   | (`src/views/dinerDashboard.tsx`) → `pizzaService.getUser()`, `getOrders()` | `GET /api/user/me` (`userRouter.js`); `GET /api/order` (`orderRouter.js`)  | `SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ?,?`; `SELECT id, menuId, description, price FROM orderItem WHERE orderId=?`|
+| View franchise<br/>(as diner)                       |  (`src/views/franchiseDashboard.tsx`) → `pizzaService.getFranchise()`| `GET /api/franchise/:userId` (`franchiseRouter.js`)  |  `SELECT objectId FROM userRole WHERE role='franchisee' AND userId=?` |
+| Logout                                              | `Logout` (`src/views/logout.tsx`) → `pizzaService.logout()`  | `DELETE /api/auth` (`authRouter.js`) | `DELETE FROM auth WHERE token=?` |
+| View About page                                     | `About` (`src/views/about.tsx`)  |          -         |       -       |
+| View History page                                   | `History` (`src/views/history.tsx`) |        -           |      -        |
+| Login as franchisee<br/>(f@jwt.com, pw: franchisee) | `Login` (`src/views/login.tsx`)  | `PUT /api/auth` (`authRouter.js`)  | `SELECT * FROM user WHERE email=?`; `SELECT * FROM userRole WHERE userId=?`; `INSERT INTO auth ... ON DUPLICATE KEY UPDATE token=token` |
+| View franchise<br/>(as franchisee)                  |(`src/views/franchiseDashboard.tsx`) → `pizzaService.getFranchise()` | `GET /api/franchise/:userId` (`franchiseRouter.js`)  |  `SELECT objectId FROM userRole WHERE role='franchisee' AND userId=?`; `SELECT id, name FROM franchise WHERE id in (...)`; `SELECT u.id, u.name, u.email FROM userRole ur JOIN user u ON u.id=ur.userId WHERE ur.objectId=? AND ur.role='franchisee'`; `SELECT s.id, s.name, COALESCE(SUM(oi.price),0) AS totalRevenue FROM dinerOrder do JOIN orderItem oi ON do.id=oi.orderId RIGHT JOIN store s ON s.id=do.storeId WHERE s.franchiseId=? GROUP BY s.id` |
+| Create a store                                      | `CreateStore` (`src/views/createStore.tsx`) → `pizzaService.createStore()` | `POST /api/franchise/:franchiseId/store` (`franchiseRouter.js`)| `auth check using the query above` `INSERT INTO store (franchiseId, name) VALUES (?, ?)`|
+| Close a store                                       | `CloseStore` (`src/views/closeStore.tsx`) → `pizzaService.closeStore()`  | `DELETE /api/franchise/:franchiseId/store/:storeId` (`franchiseRouter.js`)  |`auth check using the query above` `DELETE FROM store WHERE franchiseId=? AND id=?`|
+| Login as admin<br/>(a@jwt.com, pw: admin)           | `Login` (`src/views/login.tsx`) | `PUT /api/auth` (`authRouter.js`) | `SELECT * FROM user WHERE email=?`; `SELECT * FROM userRole WHERE userId=?`; `INSERT INTO auth ... ON DUPLICATE KEY UPDATE token=token`|
+| View Admin page                                     | `AdminDashboard` (`src/views/adminDashboard.tsx`) → `pizzaService.getFranchises()`  |`GET /api/franchise?page=&limit=&name=` (`franchiseRouter.js`)|`SELECT id, name FROM franchise WHERE name LIKE ? LIMIT ? OFFSET ?` `SELECT u.id, u.name, u.email FROM userRole ur JOIN user u ON u.id=ur.userId WHERE ur.objectId=? AND ur.role='franchisee'` |
+| Create a franchise for t@jwt.com                    | `CreateFranchise` (`src/views/createFranchise.tsx`) → `pizzaService.createFranchise()`|`POST /api/franchise` (`franchiseRouter.js`)|`SELECT id, name FROM user WHERE email=?`; `INSERT INTO franchise (name) VALUES (?)`; `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)` |
+| Close the franchise for t@jwt.com                   |`CloseFranchise` (`src/views/closeFranchise.tsx`) → `pizzaService.closeFranchise()` |`DELETE /api/franchise/:franchiseId` (`franchiseRouter.js`) |`DELETE FROM store WHERE franchiseId=?`; `DELETE FROM userRole WHERE objectId=?`; `DELETE FROM franchise WHERE id=?`|
