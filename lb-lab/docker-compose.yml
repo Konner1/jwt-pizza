@@ -1,0 +1,20 @@
+services:
+  app1: &app
+    build: ./app
+    environment: { SERVER_NAME: app1, LATENCY_MS: "300" }   # deliberately slow
+  app2:
+    <<: *app
+    environment: { SERVER_NAME: app2, LATENCY_MS: "20" }
+  app3:
+    <<: *app
+    environment: { SERVER_NAME: app3, LATENCY_MS: "20" }
+  lb_round_robin:
+    image: nginx:alpine
+    volumes: ["./nginx.rr.conf:/etc/nginx/nginx.conf:ro"]
+    ports: ["8080:80"]
+    depends_on: [app1, app2, app3]
+  lb_least_conn:
+    image: nginx:alpine
+    volumes: ["./nginx.lc.conf:/etc/nginx/nginx.conf:ro"]
+    ports: ["8081:80"]
+    depends_on: [app1, app2, app3]
